@@ -50,7 +50,7 @@ def index():
     index_html = """
     <html lang="en">
     <head><title>File Upload</title></head>
-    <body>
+    <body class="container py-5" style="background-color: blue;">
     <form method="post" enctype="multipart/form-data" action="/upload">
       <div>
         <label for="file">Choose file to upload</label>
