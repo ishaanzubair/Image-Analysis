@@ -123,11 +123,11 @@ def get_file(filename):
     file_data = blob.download_as_bytes()
     file_data = json.loads(file_data.decode('utf-8'))
     print(file_data)
-    html= f"""
+    html= f""" <body style="background-color: blue;">
       <img src='/images/{filename}'>
       <h2>Title: {file_data['title']}</h2>
       <p style="color: crimson;">Description: {file_data['description']}</p>
-    """
+    </body>"""
     return html  
 # return Response(io.BytesIO(filedata), mimetype='image/jpeg')
 
