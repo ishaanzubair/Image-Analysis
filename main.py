@@ -62,7 +62,7 @@ def index():
           border-radius: 6px;
         }
         button {
-          background-color: #20e884;
+          background-color: #007bff;
           color: white;
           border: none;
           padding: 10px 20px;
@@ -155,7 +155,7 @@ def get_file(filename):
       <style>
         body {{
           font-family: 'Segoe UI', sans-serif;
-          background-color: #20e884;
+          background-color: #007bff;
           text-align: center;
           padding: 40px;
         }}
