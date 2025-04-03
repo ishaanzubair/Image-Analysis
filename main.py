@@ -62,7 +62,7 @@ def index():
           border-radius: 6px;
         }
         button {
-          background-color: #007bff;
+          background-color: #20e884;
           color: white;
           border: none;
           padding: 10px 20px;
