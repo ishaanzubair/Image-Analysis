@@ -50,7 +50,7 @@ def index():
     index_html = """
     <html lang="en">
     <head><title>File Upload</title></head>
-    <body class="container py-5" style="background-color: yellow;">
+    <body style="background-color: #0073ff;">
     <form method="post" enctype="multipart/form-data" action="/upload">
       <div>
         <label for="file">Choose file to upload</label>
@@ -123,7 +123,7 @@ def get_file(filename):
     file_data = blob.download_as_bytes()
     file_data = json.loads(file_data.decode('utf-8'))
     print(file_data)
-    html= f""" <body style="background-color: yellow;">
+    html= f""" <body style="background-color: #0073ff;">
       <img src='/images/{filename}'>
       <h2>Title: {file_data['title']}</h2>
       <p style="color: crimson;">Description: {file_data['description']}</p>
