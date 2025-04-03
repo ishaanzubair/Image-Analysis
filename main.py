@@ -1,46 +1,25 @@
 import os
 import time
 from google.cloud import storage
-from flask import Flask, redirect, request, send_file, Response, render_template_string
+from flask import Flask, redirect, request, Response
 import io
 from PIL import Image
-os.makedirs('files', exist_ok=True)
 import json
 import google.generativeai as genai
 
-genai.configure(api_key=os.environ.get("GEMINI_API"))
+os.makedirs('files', exist_ok=True)
 
-model = genai.GenerativeModel(
-  model_name="gemini-1.5-flash",
-#   generation_config=generation_config,
-  # safety_settings = Adjust safety settings
-  # See https://ai.google.dev/gemini-api/docs/safety-settings
-)
+genai.configure(api_key=os.environ.get("GEMINI_API"))
+model = genai.GenerativeModel(model_name="gemini-1.5-flash")
 
 PROMPT = "Give me one line title and description for this image in json format."
 
-def upload_to_gemini(path, mime_type=None):
-  """Uploads the given file to Gemini.
-
-  See https://ai.google.dev/gemini-api/docs/prompting_with_media
-  """
-  file = genai.upload_file(path, mime_type=mime_type)
-  print(f"Uploaded file '{file.display_name}' as: {file.uri}")
-  # print(file)
-  return file
-
-
-# print(response)
 app = Flask(__name__)
-
 storage_client = storage.Client()
 Name_of_bucket = os.environ.get("My_Bucket")
 
-
-
 @app.get("/hello")
 def hello():
-    """Return a friendly HTTP greeting."""
     who = request.args.get("who", default="World")
     time.sleep(5)
     return f"Hello {who}!\n"
@@ -49,95 +28,167 @@ def hello():
 def index():
     index_html = """
     <html lang="en">
-    <head><title>File Upload</title></head>
-    <body style="background-color: #20e884;">
-    <form method="post" enctype="multipart/form-data" action="/upload">
-      <div>
-        <label for="file">Choose file to upload</label>
-        <input type="file" id="file" name="form_file" accept="image/jpeg"/>
+    <head>
+      <title>Image Upload</title>
+      <style>
+        body {
+          font-family: 'Segoe UI', sans-serif;
+          background-color: #20e884;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          padding: 40px;
+          margin: 0;
+        }
+        .container {
+          background: white;
+          padding: 30px;
+          border-radius: 12px;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+          max-width: 500px;
+          width: 100%;
+        }
+        h3 {
+          margin-top: 40px;
+          font-size: 1.2rem;
+        }
+        form div {
+          margin-bottom: 15px;
+        }
+        input[type="file"] {
+          width: 100%;
+          padding: 10px;
+          border: 1px solid #ccc;
+          border-radius: 6px;
+        }
+        button {
+          background-color: #007bff;
+          color: white;
+          border: none;
+          padding: 10px 20px;
+          font-size: 16px;
+          border-radius: 6px;
+          cursor: pointer;
+          transition: background 0.3s ease;
+        }
+        button:hover {
+          background-color: #0056b3;
+        }
+        ul {
+          list-style: none;
+          padding: 0;
+          max-width: 500px;
+          width: 100%;
+        }
+        li {
+          margin: 8px 0;
+        }
+        a {
+          text-decoration: none;
+          color: #333;
+          font-weight: 500;
+        }
+        a:hover {
+          text-decoration: underline;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <h2>Upload an Image</h2>
+        <form method="post" enctype="multipart/form-data" action="/upload">
+          <div>
+            <label for="file">Choose a JPEG file:</label>
+            <input type="file" id="file" name="form_file" accept="image/jpeg"/>
+          </div>
+          <div>
+            <button type="submit">Upload</button>
+          </div>
+        </form>
       </div>
-      <div>
-        <button type="submit">Submit</button>
-      </div>
-    </form>
-    <h3>Uploaded Files:</h3>
-    <ul>
+      <h3>Uploaded Files:</h3>
+      <ul>
     """
-    
     uploaded_files = list_files()
     for file in uploaded_files:
         index_html += f'<li><a href="/files/{file.name}">{file.name}</a></li>'
-    
     index_html += "</ul></body></html>"
-    
     return index_html
 
 @app.route('/upload', methods=["POST"])
 def upload():
-
-  
-
-
-    #if 'form_file' not in request.files:
-       # return "No file part", 400
-
     file = request.files['form_file']
     bucket = storage_client.bucket(Name_of_bucket)
     blob_image = bucket.blob(file.filename)
     blob_image.upload_from_file(file_obj=file, rewind=True)
-    file.save(os.path.join("",file.filename))
+    file.save(os.path.join("", file.filename))
     response = model.generate_content([Image.open(file), PROMPT])
-    print(response.text)
-    left_index=response.text.index("{")
-    right_index=response.text.index("}")
-    response_string=response.text[left_index:right_index+1]
-    print (response_string,type(response_string))
-    json_response=json.loads(response_string)
-    print(json_response)
-    file_name = file.filename.split(".")[0]+".json"
-
-    #Write json data to a file
+    left_index = response.text.index("{")
+    right_index = response.text.index("}")
+    response_string = response.text[left_index:right_index + 1]
+    json_response = json.loads(response_string)
+    file_name = file.filename.split(".")[0] + ".json"
     with open(file_name, "w") as json_file:
-      json.dump(json_response, json_file, indent=4)
-    blob_text = bucket.blob(file.filename.split(".")[0]+".json")
-    blob_text.upload_from_filename(file.filename.split(".")[0]+".json")
-
+        json.dump(json_response, json_file, indent=4)
+    blob_text = bucket.blob(file_name)
+    blob_text.upload_from_filename(file_name)
     return redirect("/")
 
 @app.route('/files')
 def list_files():
-    """Return a list of image files in the Google Cloud Storage bucket."""
     files = storage_client.list_blobs(Name_of_bucket)
     jpegs = []
     for file in files:
-      if file.name.lower().endswith(".jpeg") or file.name.lower().endswith(".jpg"):
-        jpegs.append(file)
-
+        if file.name.lower().endswith(".jpeg") or file.name.lower().endswith(".jpg"):
+            jpegs.append(file)
     return jpegs
 
 @app.route('/files/<filename>')
 def get_file(filename):
-    """Download file from Google Cloud Storage and serve it."""
     bucket = storage_client.bucket(Name_of_bucket)
-    blob = bucket.blob(filename.split(".")[0]+".json")
+    blob = bucket.blob(filename.split(".")[0] + ".json")
     file_data = blob.download_as_bytes()
     file_data = json.loads(file_data.decode('utf-8'))
-    print(file_data)
-    html= f""" <body style="background-color: #20e884;">
+    html = f""" 
+    <html>
+    <head>
+      <style>
+        body {{
+          font-family: 'Segoe UI', sans-serif;
+          background-color: #20e884;
+          text-align: center;
+          padding: 40px;
+        }}
+        img {{
+          max-width: 80%;
+          height: auto;
+          border-radius: 12px;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }}
+        h2 {{
+          margin-top: 20px;
+        }}
+        p {{
+          font-size: 1.1rem;
+          color: crimson;
+        }}
+      </style>
+    </head>
+    <body>
       <img src='/images/{filename}'>
       <h2>Title: {file_data['title']}</h2>
-      <p style="color: crimson;">Description: {file_data['description']}</p>
-    </body>"""
-    return html  
-# return Response(io.BytesIO(filedata), mimetype='image/jpeg')
+      <p>Description: {file_data['description']}</p>
+    </body>
+    </html>
+    """
+    return html
 
 @app.route('/images/<imagename>')
 def view_image(imagename):
-  bucket = storage_client.bucket(Name_of_bucket)
-  blob = bucket.blob(imagename)
-  file_data = blob.download_as_bytes()
-  return Response(io.BytesIO(file_data), mimetype='image/jpeg')
-
+    bucket = storage_client.bucket(Name_of_bucket)
+    blob = bucket.blob(imagename)
+    file_data = blob.download_as_bytes()
+    return Response(io.BytesIO(file_data), mimetype='image/jpeg')
 
 if __name__ == '__main__':
     app.run(host="localhost", port=8080, debug=True)
